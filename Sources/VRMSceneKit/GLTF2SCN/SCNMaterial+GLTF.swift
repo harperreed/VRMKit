@@ -10,6 +10,16 @@ import VRMKit
 import SceneKit
 import SpriteKit
 
+#if canImport(UIKit)
+import UIKit
+typealias PlatformImage = UIImage
+typealias PlatformColor = UIColor
+#elseif canImport(AppKit)
+import AppKit
+typealias PlatformImage = NSImage
+typealias PlatformColor = NSColor
+#endif
+
 extension SCNMaterial {
     convenience init(material: GLTF.Material, loader: VRMSceneLoader) throws {
         self.init()
@@ -53,7 +63,7 @@ extension SCNMaterial {
                 try metalness.setTextureInfo(metallicTexture, loader: loader)
                 try roughness.setTextureInfo(metallicTexture, loader: loader)
 
-                let image = try metalness.contents as? UIImage ??? ._dataInconsistent("failed to load texture image")
+                let image = try metalness.contents as? PlatformImage ??? ._dataInconsistent("failed to load texture image")
                 let (metalTexture, roughTexture) = try createMetallicRoughnessTexture(from: image)
                 metalness.contents = metalTexture
                 roughness.contents = roughTexture
@@ -77,8 +87,9 @@ extension SCNMaterial {
         }
     }
 
-    private func createMetallicRoughnessTexture(from uiImage: UIImage) throws -> (metal: UIImage, rough: UIImage) {
-        let image = try uiImage.cgImage ??? ._dataInconsistent("failed to get cgImage")
+#if canImport(UIKit)
+    private func createMetallicRoughnessTexture(from platformImage: PlatformImage) throws -> (metal: PlatformImage, rough: PlatformImage) {
+        let image = try platformImage.cgImage ??? ._dataInconsistent("failed to get cgImage")
 
         // https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#pbrmetallicroughnessmetallicroughnesstexture
 
@@ -126,24 +137,94 @@ extension SCNMaterial {
 
     private func createGraySpaceImage(width: Int,
                                       height: Int,
-                                      dataPointer: UnsafeMutablePointer<UInt8>) throws -> UIImage {
+                                      dataPointer: UnsafeMutablePointer<UInt8>) throws -> PlatformImage {
         let data = try CFDataCreate(nil, dataPointer, width * height) ??? ._dataInconsistent("failed to create CFDataCreate")
         let provider = try CGDataProvider(data: data) ??? ._dataInconsistent("failed to create CGDataProvider")
-        return UIImage(cgImage:
-            try CGImage(
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bitsPerPixel: 8,
-                bytesPerRow: width * 1,
-                space: CGColorSpaceCreateDeviceGray(),
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-                provider: provider,
-                decode: nil,
-                shouldInterpolate: false,
-                intent: .defaultIntent) ??? ._dataInconsistent("failed to create CGImage")
-        )
+        let cgImage = try CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 8,
+            bytesPerRow: width * 1,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent) ??? ._dataInconsistent("failed to create CGImage")
+        
+        return PlatformImage(cgImage: cgImage)
     }
+#elseif canImport(AppKit)
+    private func createMetallicRoughnessTexture(from platformImage: PlatformImage) throws -> (metal: PlatformImage, rough: PlatformImage) {
+        let cgImage = try platformImage.cgImage ??? ._dataInconsistent("failed to get cgImage")
+
+        // https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#pbrmetallicroughnessmetallicroughnesstexture
+
+        let pixelCount = cgImage.width * cgImage.height
+        let bitsPerComponent = 8
+        let componentsPerPixel = 4 // RGBA
+        let srcBytesPerPixel = bitsPerComponent * componentsPerPixel / 8
+        let srcDataSize = pixelCount * srcBytesPerPixel
+
+        let ptr = UnsafeMutablePointer<UInt8>.allocate(capacity: srcDataSize)
+        let metalPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: pixelCount)
+        let roughPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: pixelCount)
+        defer {
+            ptr.deallocate()
+            metalPtr.deallocate()
+            roughPtr.deallocate()
+        }
+
+        let context = try CGContext(
+            data: UnsafeMutableRawPointer(ptr),
+            width: cgImage.width,
+            height: cgImage.height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: srcBytesPerPixel * cgImage.width,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+            ??? ._dataInconsistent("failed to create cgcontext")
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+
+        for dstPos in 0..<pixelCount {
+            let srcPos = dstPos * srcBytesPerPixel
+            metalPtr[dstPos] = ptr[srcPos + 2] // blue
+            roughPtr[dstPos] = ptr[srcPos + 1] // green
+        }
+
+        let metalImage = try createGraySpaceImage(width: cgImage.width,
+                                                  height: cgImage.height,
+                                                  dataPointer: metalPtr)
+
+        let roughImage = try createGraySpaceImage(width: cgImage.width,
+                                                  height: cgImage.height,
+                                                  dataPointer: roughPtr)
+        return (metalImage, roughImage)
+    }
+
+    private func createGraySpaceImage(width: Int,
+                                      height: Int,
+                                      dataPointer: UnsafeMutablePointer<UInt8>) throws -> PlatformImage {
+        let data = try CFDataCreate(nil, dataPointer, width * height) ??? ._dataInconsistent("failed to create CFDataCreate")
+        let provider = try CGDataProvider(data: data) ??? ._dataInconsistent("failed to create CGDataProvider")
+        let cgImage = try CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 8,
+            bytesPerRow: width * 1,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent) ??? ._dataInconsistent("failed to create CGImage")
+        
+        let size = NSSize(width: width, height: height)
+        return NSImage(cgImage: cgImage, size: size)
+    }
+#endif
 
     private func blendMode(of alphaMode: GLTF.Material.AlphaMode) -> SCNBlendMode {
         // FIXME/TODO: https://dwango.github.io/vrm/vrm_spec/#vrm%E3%81%8C%E6%8F%90%E4%BE%9B%E3%81%99%E3%82%8B%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%80%E3%83%BC

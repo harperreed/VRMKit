@@ -8,7 +8,9 @@
 
 import VRMKit
 import SceneKit
+import Foundation
 
+// NSValue is available on both platforms and provides value boxing functionality
 typealias InverseBindMatrix = NSValue
 
 extension Array where Element == InverseBindMatrix {

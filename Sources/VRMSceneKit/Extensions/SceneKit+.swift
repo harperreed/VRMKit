@@ -9,6 +9,17 @@
 import SceneKit
 import SpriteKit
 
+#if canImport(UIKit)
+import UIKit
+typealias PlatformColor = UIColor
+// On iOS, SpriteKit's SKColor is already defined as UIColor
+#elseif canImport(AppKit)
+import AppKit
+typealias PlatformColor = NSColor
+// Define SKColor for macOS
+typealias SKColor = NSColor
+#endif
+
 extension SCNVector3 {
     static func + (_ left: SCNVector3, _ right: SCNVector3) -> SCNVector3 {
         SCNVector3(left.x + right.x, left.y + right.y, left.z + right.z)

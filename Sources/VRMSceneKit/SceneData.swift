@@ -8,7 +8,15 @@
 
 import VRMKit
 import SceneKit
+import Foundation
+
+#if canImport(UIKit)
 import UIKit
+typealias PlatformImage = UIImage
+#elseif canImport(AppKit)
+import AppKit
+typealias PlatformImage = NSImage
+#endif
 
 final class SceneData {
     var scene: VRMScene?
@@ -27,7 +35,7 @@ final class SceneData {
     var buffers: [Data?] = []
     var materials: [SCNMaterial?] = []
     var textures: [SCNMaterialProperty?] = []
-    var images: [UIImage?] = []
+    var images: [PlatformImage?] = []
 
     init(vrm: GLTF) {
         scenes = Array(repeating: nil, count: vrm.scenes?.count ?? 0)
