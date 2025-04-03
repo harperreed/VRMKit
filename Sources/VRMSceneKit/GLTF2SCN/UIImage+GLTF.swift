@@ -11,10 +11,10 @@ import Foundation
 
 #if canImport(UIKit)
 import UIKit
-typealias PlatformImage = UIImage
+public typealias PlatformImage = UIImage
 #elseif canImport(AppKit)
 import AppKit
-typealias PlatformImage = NSImage
+public typealias PlatformImage = NSImage
 #endif
 
 #if canImport(UIKit)

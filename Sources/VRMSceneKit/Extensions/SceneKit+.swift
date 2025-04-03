@@ -8,16 +8,14 @@
 
 import SceneKit
 import SpriteKit
+import Foundation
 
 #if canImport(UIKit)
 import UIKit
-typealias PlatformColor = UIColor
-// On iOS, SpriteKit's SKColor is already defined as UIColor
+public typealias SKColor = UIColor
 #elseif canImport(AppKit)
 import AppKit
-typealias PlatformColor = NSColor
-// Define SKColor for macOS
-typealias SKColor = NSColor
+public typealias SKColor = NSColor
 #endif
 
 extension SCNVector3 {
@@ -105,6 +103,14 @@ extension SCNMatrix4 {
                   m21: v[4], m22: v[5], m23: v[6], m24: v[7],
                   m31: v[8], m32: v[9], m33: v[10], m34: v[11],
                   m41: v[12], m42: v[13], m43: v[14], m44: v[15])
+    }
+    
+    init(_ v: [Float]) throws {
+        guard v.count == 16 else { throw "SCNMatrix4: values.count must be 16" }
+        self.init(m11: SCNFloat(v[0]), m12: SCNFloat(v[1]), m13: SCNFloat(v[2]), m14: SCNFloat(v[3]),
+                  m21: SCNFloat(v[4]), m22: SCNFloat(v[5]), m23: SCNFloat(v[6]), m24: SCNFloat(v[7]),
+                  m31: SCNFloat(v[8]), m32: SCNFloat(v[9]), m33: SCNFloat(v[10]), m34: SCNFloat(v[11]),
+                  m41: SCNFloat(v[12]), m42: SCNFloat(v[13]), m43: SCNFloat(v[14]), m44: SCNFloat(v[15]))
     }
     
     static func * (_ left: SCNMatrix4, right: SCNMatrix4) -> SCNMatrix4 {

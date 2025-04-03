@@ -9,16 +9,7 @@
 import VRMKit
 import SceneKit
 import SpriteKit
-
-#if canImport(UIKit)
-import UIKit
-typealias PlatformImage = UIImage
-typealias PlatformColor = UIColor
-#elseif canImport(AppKit)
-import AppKit
-typealias PlatformImage = NSImage
-typealias PlatformColor = NSColor
-#endif
+import Foundation
 
 extension SCNMaterial {
     convenience init(material: GLTF.Material, loader: VRMSceneLoader) throws {

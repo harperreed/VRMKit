@@ -13,10 +13,8 @@ import SpriteKit
 
 #if canImport(UIKit)
 import UIKit
-typealias PlatformImage = UIImage
 #elseif canImport(AppKit)
 import AppKit
-typealias PlatformImage = NSImage
 #endif
 
 open class VRMSceneLoader {
@@ -38,7 +36,11 @@ open class VRMSceneLoader {
     }
 
     public func loadScene(withSceneIndex index: Int) throws -> VRMScene {
-        if let cache = try sceneData.load(\.scenes, index: index) { return cache }
+        // Check if we already have the scene cached
+        if index < sceneData.scenes.count, let cache = sceneData.scenes[index] {
+            return cache
+        }
+        
         let gltfScene = try gltf.load(\.scenes, keyName: "scenes")[index]
         
         let vrmNode = VRMNode(vrm: vrm)
@@ -54,14 +56,20 @@ open class VRMSceneLoader {
         return scnScene
     }
 
+    /// Loads the thumbnail image from the VRM file
+    /// - Returns: The thumbnail image or nil if not available
     public func loadThumbnail() throws -> PlatformImage? {
         guard let textureIndex = vrm.meta.texture else { return nil }
-        if let cache = try sceneData.load(\.images, index: textureIndex) { return cache }
+        if textureIndex < sceneData.images.count, let cache = sceneData.images[textureIndex] {
+            return cache
+        }
         return try image(withImageIndex: textureIndex)
     }
 
     func node(withNodeIndex index: Int) throws -> SCNNode {
-        if let cache = try sceneData.load(\.nodes, index: index) { return cache }
+        if index < sceneData.nodes.count, let cache = sceneData.nodes[index] {
+            return cache
+        }
         let gltfNode = try gltf.load(\.nodes, keyName: "nodes")[index]
         let gltfSkins = try? gltf.load(\.skins, keyName: "skins")
         let scnNode = try SCNNode(node: gltfNode, skins: gltfSkins, loader: self)
@@ -70,7 +78,9 @@ open class VRMSceneLoader {
     }
 
     func camera(withCameraIndex index: Int) throws -> SCNCamera {
-        if let cache = try sceneData.load(\.cameras, index: index) { return cache }
+        if index < sceneData.cameras.count, let cache = sceneData.cameras[index] {
+            return cache
+        }
         let gltfCamera = try gltf.load(\.cameras, keyName: "cameras")[index]
         let camera = try SCNCamera(camera: gltfCamera)
         sceneData.cameras[index] = camera
@@ -78,7 +88,9 @@ open class VRMSceneLoader {
     }
 
     func mesh(withMeshIndex index: Int) throws -> SCNNode {
-        if let cache = try sceneData.load(\.meshes, index: index) { return cache }
+        if index < sceneData.meshes.count, let cache = sceneData.meshes[index] {
+            return cache
+        }
         let gltfMesh = try gltf.load(\.meshes, keyName: "meshes")[index]
         let mesh = try SCNNode(mesh: gltfMesh, loader: self)
         sceneData.meshes[index] = mesh
@@ -88,7 +100,9 @@ open class VRMSceneLoader {
     func attributes(_ attributes: [GLTF.Mesh.Primitive.AttributeKey: Int]) throws -> [SCNGeometrySource] {
         return try attributes.compactMap { attribute, index in
             guard attribute != .COLOR_0 else { return nil } // FIXME
-            if let cache = try sceneData.load(\.accessors, index: index) as? SCNGeometrySource { return cache }
+            if index < sceneData.accessors.count, let cache = sceneData.accessors[index] as? SCNGeometrySource {
+                return cache
+            }
             let gltfAccessor = try gltf.load(\.accessors, keyName: "accessors")[index]
             let geometrySource = try SCNGeometrySource(accessor: gltfAccessor, semantic: semantic(of: attribute), loader: self)
             sceneData.accessors[index] = geometrySource
@@ -97,7 +111,9 @@ open class VRMSceneLoader {
     }
 
     func indexAccessor(withAccessorIndex index: Int, mode: GLTF.Mesh.Primitive.Mode) throws -> SCNGeometryElement {
-        if let cache = try sceneData.load(\.accessors, index: index) as? SCNGeometryElement { return cache }
+        if index < sceneData.accessors.count, let cache = sceneData.accessors[index] as? SCNGeometryElement {
+            return cache
+        }
         let gltfAccessor = try gltf.load(\.accessors, keyName: "accessors")[index]
         let geometryElement = try SCNGeometryElement(accessor: gltfAccessor, mode: mode, loader: self)
         sceneData.accessors[index] = geometryElement
@@ -105,7 +121,9 @@ open class VRMSceneLoader {
     }
 
     func inverseBindMatrix(withAccessorIndex index: Int) throws -> [InverseBindMatrix] {
-        if let cache = try sceneData.load(\.accessors, index: index) as? [InverseBindMatrix] { return cache }
+        if index < sceneData.accessors.count, let cache = sceneData.accessors[index] as? [InverseBindMatrix] {
+            return cache
+        }
         let gltfAccessor = try gltf.load(\.accessors, keyName: "accessors")[index]
         let ibm = try [InverseBindMatrix](accessor: gltfAccessor, loader: self)
         sceneData.accessors[index] = ibm
@@ -124,7 +142,9 @@ open class VRMSceneLoader {
 
     func bufferView(withBufferViewIndex index: Int) throws -> (bufferView: Data, stride: Int?) {
         let gltfBufferView = try gltf.load(\.bufferViews, keyName: "bufferViews")[index]
-        if let cache = try sceneData.load(\.bufferViews, index: index) { return (cache, gltfBufferView.byteStride) }
+        if index < sceneData.bufferViews.count, let cache = sceneData.bufferViews[index] {
+            return (cache, gltfBufferView.byteStride)
+        }
         let buffer = try self.buffer(withBufferIndex: gltfBufferView.buffer)
         let bufferView = buffer.subdata(in: gltfBufferView.byteOffset..<gltfBufferView.byteOffset + gltfBufferView.byteLength)
         sceneData.bufferViews[index] = bufferView
@@ -132,7 +152,9 @@ open class VRMSceneLoader {
     }
 
     private func buffer(withBufferIndex index: Int) throws -> Data {
-        if let cache = try sceneData.load(\.buffers, index: index) { return cache }
+        if index < sceneData.buffers.count, let cache = sceneData.buffers[index] {
+            return cache
+        }
         let gltfBuffer = try gltf.load(\.buffers, keyName: "buffers")[index]
         let buffer = try Data(buffer: gltfBuffer, relativeTo: rootDirectory, vrm: vrm)
         sceneData.buffers[index] = buffer
@@ -140,7 +162,9 @@ open class VRMSceneLoader {
     }
 
     func material(withMaterialIndex index: Int) throws -> SCNMaterial {
-        if let cache = try sceneData.load(\.materials, index: index) { return cache }
+        if index < sceneData.materials.count, let cache = sceneData.materials[index] {
+            return cache
+        }
         let gltfMaterial = try gltf.load(\.materials, keyName: "materials")[index]
         let material = try SCNMaterial(material: gltfMaterial, loader: self)
         sceneData.materials[index] = material
@@ -148,7 +172,9 @@ open class VRMSceneLoader {
     }
 
     func texture(withTextureIndex index: Int) throws -> SCNMaterialProperty {
-        if let cache = try sceneData.load(\.textures, index: index) { return cache }
+        if index < sceneData.textures.count, let cache = sceneData.textures[index] {
+            return cache
+        }
         let gltfTexture = try gltf.load(\.textures, keyName: "textures")[index]
         let texture = SCNMaterialProperty(contents: try image(withImageIndex: gltfTexture.source))
         if let sampler = gltfTexture.sampler {
@@ -161,10 +187,19 @@ open class VRMSceneLoader {
         return texture
     }
 
+    /// Loads an image with the given index from the VRM file
+    /// - Parameter index: The index of the image to load
+    /// - Returns: The loaded platform-specific image (UIImage on iOS, NSImage on macOS)
     func image(withImageIndex index: Int) throws -> PlatformImage {
-        if let cache = try sceneData.load(\.images, index: index) { return cache }
+        if index < sceneData.images.count, let cache = sceneData.images[index] {
+            return cache
+        }
         let gltfImage = try gltf.load(\.images, keyName: "images")[index]
-        let image = try PlatformImage(image: gltfImage, relativeTo: rootDirectory, loader: self)
+        #if canImport(UIKit)
+        let image = try UIImage(image: gltfImage, relativeTo: rootDirectory, loader: self)
+        #elseif canImport(AppKit)
+        let image = try NSImage(image: gltfImage, relativeTo: rootDirectory, loader: self)
+        #endif
         sceneData.images[index] = image
         return image
     }

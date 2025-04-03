@@ -11,19 +11,6 @@ import Foundation
 import SceneKit
 import SpriteKit
 
-#if canImport(UIKit)
-import UIKit
-typealias PlatformColor = UIColor
-typealias PlatformImage = UIImage
-// On iOS, SpriteKit's SKColor is already defined as UIColor
-#elseif canImport(AppKit)
-import AppKit
-typealias PlatformColor = NSColor
-typealias PlatformImage = NSImage
-// Define SKColor for macOS
-typealias SKColor = NSColor
-#endif
-
 func semantic(of key: GLTF.Mesh.Primitive.AttributeKey) -> SCNGeometrySource.Semantic {
     switch key {
     case .POSITION: return .vertex

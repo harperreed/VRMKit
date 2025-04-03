@@ -9,13 +9,14 @@
 import SceneKit
 import GameKit
 import VRMKit
+import Foundation
 
 #if canImport(UIKit)
 import UIKit
-typealias PlatformColor = UIColor
+public typealias PlatformColor = UIColor
 #elseif canImport(AppKit)
 import AppKit
-typealias PlatformColor = NSColor
+public typealias PlatformColor = NSColor
 #endif
 
 final class VRMSpringBone {

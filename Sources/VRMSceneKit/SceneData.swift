@@ -10,14 +10,6 @@ import VRMKit
 import SceneKit
 import Foundation
 
-#if canImport(UIKit)
-import UIKit
-typealias PlatformImage = UIImage
-#elseif canImport(AppKit)
-import AppKit
-typealias PlatformImage = NSImage
-#endif
-
 final class SceneData {
     var scene: VRMScene?
     var scenes: [VRMScene?]
@@ -56,8 +48,10 @@ final class SceneData {
         images = Array(repeating: nil, count: vrm.images?.count ?? 0)
     }
 
-    func load<T>(_ keyPath: KeyPath<SceneData, [T]>, index: Int) throws -> T {
-        let values = self[keyPath: keyPath]
-        return try values[safe: index] ??? ._dataInconsistent("\(keyPath): out of index \(index) < \(values.count)")
+    // Helper for array access with validation
+    func validateIndex<T>(_ array: [T?], index: Int) throws {
+        guard index < array.count else {
+            throw VRMError._dataInconsistent("Index out of bounds: \(index) >= \(array.count)")
+        }
     }
 }
